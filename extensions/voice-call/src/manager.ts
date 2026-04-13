@@ -322,6 +322,10 @@ export class CallManager {
     return this.activeCalls.get(callId);
   }
 
+  hasTranscriptWaiter(callId: CallId): boolean {
+    return this.transcriptWaiters.has(callId);
+  }
+
   /**
    * Get an active call by provider call ID (e.g., Twilio CallSid).
    */
