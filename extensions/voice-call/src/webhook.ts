@@ -710,7 +710,31 @@ export class VoiceCallWebhookServer {
   private processParsedEvents(events: NormalizedEvent[]): void {
     for (const event of events) {
       try {
+        const preProcessCall = event.providerCallId
+          ? this.manager.getCallByProviderCallId(event.providerCallId)
+          : this.manager.getCall(event.callId);
+        const hadTranscriptWaiter = Boolean(
+          preProcessCall && this.manager.hasTranscriptWaiter(preProcessCall.callId),
+        );
+
         this.manager.processEvent(event);
+
+        if (event.type === "call.speech" && event.isFinal && typeof event.transcript === "string") {
+          const call = event.providerCallId
+            ? this.manager.getCallByProviderCallId(event.providerCallId)
+            : this.manager.getCall(event.callId);
+          if (!call) {
+            continue;
+          }
+
+          const callMode = call.metadata?.mode as string | undefined;
+          const shouldRespond = call.direction === "inbound" || callMode === "conversation";
+          if (shouldRespond && !hadTranscriptWaiter) {
+            this.handleInboundResponse(call.callId, event.transcript).catch((err) => {
+              console.warn(`[voice-call] Failed to auto-respond:`, err);
+            });
+          }
+        }
       } catch (err) {
         console.error(`[voice-call] Error processing event ${event.type}:`, err);
       }
