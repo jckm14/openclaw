@@ -62,6 +62,17 @@ function runCommand(
   });
 }
 
+async function runPnpm(args: string[], options: { cwd: string; timeoutMs?: number }) {
+  try {
+    return await runCommand("pnpm", args, options);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw error;
+    }
+    return runCommand("corepack", ["pnpm", ...args], options);
+  }
+}
+
 describe("OpenClaw SDK package e2e", () => {
   afterEach(async () => {
     await Promise.all(
@@ -71,29 +82,60 @@ describe("OpenClaw SDK package e2e", () => {
 
   it("packs and imports from an external temp consumer", async () => {
     const repoRoot = process.cwd();
-    const packageRoot = path.join(repoRoot, "packages", "sdk");
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-sdk-consumer-"));
     tempDirs.push(tempDir);
 
-    await runCommand("pnpm", ["--filter", "@openclaw/sdk", "build"], {
-      cwd: repoRoot,
-      timeoutMs: 180_000,
-    });
-    await runCommand("pnpm", ["pack", "--pack-destination", tempDir], {
-      cwd: packageRoot,
-    });
+    await runPnpm(
+      [
+        "--filter",
+        "@openclaw/gateway-protocol",
+        "--filter",
+        "@openclaw/gateway-client",
+        "--filter",
+        "@openclaw/sdk",
+        "build",
+      ],
+      {
+        cwd: repoRoot,
+        timeoutMs: 180_000,
+      },
+    );
 
-    const packedFiles = (await fs.readdir(tempDir)).filter((file) => file.endsWith(".tgz"));
-    expect(packedFiles).toHaveLength(1);
-    const tarball = path.join(tempDir, packedFiles[0] ?? "");
+    const packageTarballs: string[] = [];
+    for (const workspacePackage of [
+      "packages/gateway-protocol",
+      "packages/gateway-client",
+      "packages/sdk",
+    ]) {
+      const packRoot = path.join(repoRoot, workspacePackage);
+      await runPnpm(["pack", "--pack-destination", tempDir], {
+        cwd: packRoot,
+      });
+      const packedFiles = (await fs.readdir(tempDir))
+        .filter((file) => file.endsWith(".tgz"))
+        .map((file) => path.join(tempDir, file));
+      const newTarball = packedFiles.find((file) => !packageTarballs.includes(file));
+      if (!newTarball) {
+        throw new Error(`pnpm pack did not create a tarball for ${workspacePackage}`);
+      }
+      packageTarballs.push(newTarball);
+    }
+
+    const sdkTarball = packageTarballs.find((file) => path.basename(file).includes("openclaw-sdk"));
+    expect(sdkTarball).toBeTruthy();
 
     await fs.writeFile(
       path.join(tempDir, "package.json"),
       JSON.stringify({ private: true, type: "module" }),
     );
-    await runCommand("npm", ["install", "--ignore-scripts", "--no-audit", "--no-fund", tarball], {
-      cwd: tempDir,
-    });
+    await runCommand(
+      "npm",
+      ["install", "--ignore-scripts", "--no-audit", "--no-fund", ...packageTarballs],
+      {
+        cwd: tempDir,
+        timeoutMs: 120_000,
+      },
+    );
 
     const importScript = `
       import { GatewayClientTransport, OpenClaw, normalizeGatewayEvent } from "@openclaw/sdk";
