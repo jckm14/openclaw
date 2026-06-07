@@ -27,7 +27,7 @@ describe("chat-model-ref helpers", () => {
   it("builds provider-qualified option values and prefers catalog names for labels", () => {
     expect(buildChatModelOption(catalog[0], catalog)).toEqual({
       value: "openai/gpt-5-mini",
-      label: "GPT-5 Mini",
+      label: "openai/gpt-5-mini",
     });
   });
 
@@ -44,7 +44,7 @@ describe("chat-model-ref helpers", () => {
 
     expect(buildChatModelOption(providerNativeModel, [providerNativeModel])).toEqual({
       value: "openrouter/google/gemma-4-26b-a4b-it",
-      label: "Gemma 4 26B A4B IT",
+      label: "openrouter/google/gemma-4-26b-a4b-it",
     });
     expect(
       resolvePreferredServerChatModelValue("google/gemma-4-26b-a4b-it", "openrouter", [
@@ -63,10 +63,10 @@ describe("chat-model-ref helpers", () => {
 
     expect(buildChatModelOption(aliasedModel, [aliasedModel])).toEqual({
       value: "nvidia/moonshotai/kimi-k2.5",
-      label: "Kimi K2.5 (NVIDIA)",
+      label: "nvidia/moonshotai/kimi-k2.5",
     });
     expect(formatCatalogChatModelDisplay("nvidia/moonshotai/kimi-k2.5", [aliasedModel])).toBe(
-      "Kimi K2.5 (NVIDIA)",
+      "nvidia/moonshotai/kimi-k2.5",
     );
   });
 
@@ -78,10 +78,10 @@ describe("chat-model-ref helpers", () => {
     };
     expect(buildChatModelOption(nestedModel, [nestedModel])).toEqual({
       value: "nvidia/moonshotai/kimi-k2.5",
-      label: "Kimi K2.5 (NVIDIA)",
+      label: "nvidia/moonshotai/kimi-k2.5",
     });
     expect(formatCatalogChatModelDisplay("nvidia/moonshotai/kimi-k2.5", [nestedModel])).toBe(
-      "Kimi K2.5 (NVIDIA)",
+      "nvidia/moonshotai/kimi-k2.5",
     );
   });
 
@@ -101,11 +101,11 @@ describe("chat-model-ref helpers", () => {
 
     expect(buildChatModelOption(duplicateNameCatalog[0], duplicateNameCatalog)).toEqual({
       value: "anthropic/claude-3-7-sonnet",
-      label: "Claude Sonnet · anthropic",
+      label: "anthropic/claude-3-7-sonnet",
     });
     expect(
       formatCatalogChatModelDisplay("openrouter/claude-3-7-sonnet", duplicateNameCatalog),
-    ).toBe("Claude Sonnet · openrouter");
+    ).toBe("openrouter/claude-3-7-sonnet");
   });
 
   it("falls back to the raw catalog label when name and provider still collide", () => {
@@ -126,14 +126,14 @@ describe("chat-model-ref helpers", () => {
       buildChatModelOption(duplicateNameAndProviderCatalog[0], duplicateNameAndProviderCatalog),
     ).toEqual({
       value: "anthropic/claude-3-7-sonnet",
-      label: "Claude Sonnet · claude-3-7-sonnet · anthropic",
+      label: "anthropic/claude-3-7-sonnet",
     });
     expect(
       formatCatalogChatModelDisplay(
         "anthropic/claude-3-7-sonnet-thinking",
         duplicateNameAndProviderCatalog,
       ),
-    ).toBe("Claude Sonnet · claude-3-7-sonnet-thinking · anthropic");
+    ).toBe("anthropic/claude-3-7-sonnet-thinking");
   });
 
   it("normalizes raw overrides when the catalog match is unique", () => {
