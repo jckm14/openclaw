@@ -66,7 +66,7 @@ describe("chat-model-ref helpers", () => {
       label: "nvidia/moonshotai/kimi-k2.5",
     });
     expect(formatCatalogChatModelDisplay("nvidia/moonshotai/kimi-k2.5", [aliasedModel])).toBe(
-      "nvidia/moonshotai/kimi-k2.5",
+      "Kimi K2.5 (NVIDIA)",
     );
   });
 
@@ -81,7 +81,7 @@ describe("chat-model-ref helpers", () => {
       label: "nvidia/moonshotai/kimi-k2.5",
     });
     expect(formatCatalogChatModelDisplay("nvidia/moonshotai/kimi-k2.5", [nestedModel])).toBe(
-      "nvidia/moonshotai/kimi-k2.5",
+      "Kimi K2.5 (NVIDIA)",
     );
   });
 
@@ -105,7 +105,7 @@ describe("chat-model-ref helpers", () => {
     });
     expect(
       formatCatalogChatModelDisplay("openrouter/claude-3-7-sonnet", duplicateNameCatalog),
-    ).toBe("openrouter/claude-3-7-sonnet");
+    ).toBe("Claude Sonnet · openrouter");
   });
 
   it("falls back to the raw catalog label when name and provider still collide", () => {
@@ -133,7 +133,7 @@ describe("chat-model-ref helpers", () => {
         "anthropic/claude-3-7-sonnet-thinking",
         duplicateNameAndProviderCatalog,
       ),
-    ).toBe("anthropic/claude-3-7-sonnet-thinking");
+    ).toBe("Claude Sonnet · claude-3-7-sonnet-thinking · anthropic");
   });
 
   it("normalizes raw overrides when the catalog match is unique", () => {
