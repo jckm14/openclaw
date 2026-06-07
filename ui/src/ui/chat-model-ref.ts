@@ -266,12 +266,12 @@ export function buildChatModelOption(
 
 export function buildChatModelOptionFromLookup(
   entry: ModelCatalogEntry,
-  _displayLookup: ChatModelDisplayLookup,
+  displayLookup: ChatModelDisplayLookup,
 ): { value: string; label: string } {
   const provider = entry.provider?.trim();
   const value = buildQualifiedChatModelValue(entry.id, provider);
   return {
     value,
-    label: value,
+    label: formatCatalogEntryDisplay(entry, displayLookup),
   };
 }

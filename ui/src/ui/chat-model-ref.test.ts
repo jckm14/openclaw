@@ -27,7 +27,7 @@ describe("chat-model-ref helpers", () => {
   it("builds provider-qualified option values and prefers catalog names for labels", () => {
     expect(buildChatModelOption(catalog[0], catalog)).toEqual({
       value: "openai/gpt-5-mini",
-      label: "openai/gpt-5-mini",
+      label: "GPT-5 Mini",
     });
   });
 
@@ -44,7 +44,7 @@ describe("chat-model-ref helpers", () => {
 
     expect(buildChatModelOption(providerNativeModel, [providerNativeModel])).toEqual({
       value: "openrouter/google/gemma-4-26b-a4b-it",
-      label: "openrouter/google/gemma-4-26b-a4b-it",
+      label: "Gemma 4 26B A4B IT",
     });
     expect(
       resolvePreferredServerChatModelValue("google/gemma-4-26b-a4b-it", "openrouter", [
@@ -63,7 +63,7 @@ describe("chat-model-ref helpers", () => {
 
     expect(buildChatModelOption(aliasedModel, [aliasedModel])).toEqual({
       value: "nvidia/moonshotai/kimi-k2.5",
-      label: "nvidia/moonshotai/kimi-k2.5",
+      label: "Kimi K2.5 (NVIDIA)",
     });
     expect(formatCatalogChatModelDisplay("nvidia/moonshotai/kimi-k2.5", [aliasedModel])).toBe(
       "Kimi K2.5 (NVIDIA)",
@@ -78,7 +78,7 @@ describe("chat-model-ref helpers", () => {
     };
     expect(buildChatModelOption(nestedModel, [nestedModel])).toEqual({
       value: "nvidia/moonshotai/kimi-k2.5",
-      label: "nvidia/moonshotai/kimi-k2.5",
+      label: "Kimi K2.5 (NVIDIA)",
     });
     expect(formatCatalogChatModelDisplay("nvidia/moonshotai/kimi-k2.5", [nestedModel])).toBe(
       "Kimi K2.5 (NVIDIA)",
@@ -101,7 +101,7 @@ describe("chat-model-ref helpers", () => {
 
     expect(buildChatModelOption(duplicateNameCatalog[0], duplicateNameCatalog)).toEqual({
       value: "anthropic/claude-3-7-sonnet",
-      label: "anthropic/claude-3-7-sonnet",
+      label: "Claude Sonnet · anthropic",
     });
     expect(
       formatCatalogChatModelDisplay("openrouter/claude-3-7-sonnet", duplicateNameCatalog),
@@ -126,7 +126,7 @@ describe("chat-model-ref helpers", () => {
       buildChatModelOption(duplicateNameAndProviderCatalog[0], duplicateNameAndProviderCatalog),
     ).toEqual({
       value: "anthropic/claude-3-7-sonnet",
-      label: "anthropic/claude-3-7-sonnet",
+      label: "Claude Sonnet · claude-3-7-sonnet · anthropic",
     });
     expect(
       formatCatalogChatModelDisplay(
