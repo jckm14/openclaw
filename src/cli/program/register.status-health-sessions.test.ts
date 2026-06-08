@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   healthCommand: vi.fn(),
   sessionsCommand: vi.fn(),
   sessionsCleanupCommand: vi.fn(),
+  sessionsCompactCommand: vi.fn(),
   sessionsTailCommand: vi.fn(),
   exportTrajectoryCommand: vi.fn(),
   commitmentsListCommand: vi.fn(),
@@ -33,6 +34,7 @@ const statusCommand = mocks.statusCommand;
 const healthCommand = mocks.healthCommand;
 const sessionsCommand = mocks.sessionsCommand;
 const sessionsCleanupCommand = mocks.sessionsCleanupCommand;
+const sessionsCompactCommand = mocks.sessionsCompactCommand;
 const sessionsTailCommand = mocks.sessionsTailCommand;
 const exportTrajectoryCommand = mocks.exportTrajectoryCommand;
 const commitmentsListCommand = mocks.commitmentsListCommand;
@@ -91,6 +93,10 @@ vi.mock("../../commands/sessions-cleanup.js", () => ({
   sessionsCleanupCommand: mocks.sessionsCleanupCommand,
 }));
 
+vi.mock("../../commands/sessions-compact.js", () => ({
+  sessionsCompactCommand: mocks.sessionsCompactCommand,
+}));
+
 vi.mock("../../commands/sessions-tail.js", () => ({
   sessionsTailCommand: mocks.sessionsTailCommand,
 }));
@@ -141,6 +147,7 @@ describe("registerStatusHealthSessionsCommands", () => {
     healthCommand.mockResolvedValue(undefined);
     sessionsCommand.mockResolvedValue(undefined);
     sessionsCleanupCommand.mockResolvedValue(undefined);
+    sessionsCompactCommand.mockResolvedValue(undefined);
     sessionsTailCommand.mockResolvedValue(undefined);
     exportTrajectoryCommand.mockResolvedValue(undefined);
     commitmentsListCommand.mockResolvedValue(undefined);
@@ -351,6 +358,49 @@ describe("registerStatusHealthSessionsCommands", () => {
     expectCommandOptions(sessionsCleanupCommand, {
       allAgents: true,
     });
+  });
+
+  it("runs sessions compact with gateway recovery options", async () => {
+    await runCli([
+      "sessions",
+      "compact",
+      "agent:main:main",
+      "--agent",
+      "main",
+      "--max-lines",
+      "2000",
+      "--timeout",
+      "30000",
+      "--json",
+    ]);
+
+    expectCommandOptions(sessionsCompactCommand, {
+      key: "agent:main:main",
+      agent: "main",
+      maxLines: 2000,
+      timeoutMs: 30000,
+      json: true,
+    });
+  });
+
+  it("forwards sessions parent options through compact", async () => {
+    await runCli(["sessions", "--agent", "work", "--json", "compact", "global"]);
+
+    expectCommandOptions(sessionsCompactCommand, {
+      key: "global",
+      agent: "work",
+      json: true,
+    });
+  });
+
+  it("rejects invalid sessions compact max-lines", async () => {
+    await runCli(["sessions", "compact", "agent:main:main", "--max-lines", "nope"]);
+
+    expect(runtime.error).toHaveBeenCalledWith(
+      "--max-lines must be a positive integer, for example --max-lines 2000.",
+    );
+    expect(runtime.exit).toHaveBeenCalledWith(1);
+    expect(sessionsCompactCommand).not.toHaveBeenCalled();
   });
 
   it("runs sessions tail with forwarded progress options", async () => {

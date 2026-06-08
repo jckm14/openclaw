@@ -289,6 +289,63 @@ export function registerStatusHealthSessionsCommands(program: Command) {
     });
 
   sessionsCmd
+    .command("compact <key>")
+    .description("Compact a stored session through the running gateway")
+    .option("--agent <id>", "Agent id for global/default session keys")
+    .option(
+      "--max-lines <count>",
+      "Emergency fallback: archive the transcript and keep only the newest N lines",
+    )
+    .option("--timeout <ms>", "Gateway request timeout in milliseconds", "10000")
+    .option("--json", "Output JSON", false)
+    .addHelpText(
+      "after",
+      () =>
+        `\n${theme.heading("Examples:")}\n${formatHelpExamples([
+          ["openclaw sessions compact agent:main:main", "Run runtime-owned manual compaction."],
+          ["openclaw sessions compact global --agent work", "Compact one agent's global session."],
+          [
+            "openclaw sessions compact agent:main:main --max-lines 2000",
+            "Archive and keep the newest transcript lines when runtime compaction cannot recover.",
+          ],
+          ["openclaw sessions compact agent:main:main --json", "Machine-readable output."],
+        ])}`,
+    )
+    .action(async (key, opts, command) => {
+      const parentOpts = command.parent?.opts() as
+        | {
+            agent?: string;
+            json?: boolean;
+          }
+        | undefined;
+      const maxLines = parseStrictPositiveIntOrUndefined(opts.maxLines);
+      if (opts.maxLines !== undefined && maxLines === undefined) {
+        defaultRuntime.error(
+          "--max-lines must be a positive integer, for example --max-lines 2000.",
+        );
+        defaultRuntime.exit(1);
+        return;
+      }
+      const timeoutMs = parseTimeoutMs(opts.timeout);
+      if (timeoutMs === null) {
+        return;
+      }
+      await runCommandWithRuntime(defaultRuntime, async () => {
+        const { sessionsCompactCommand } = await import("../../commands/sessions-compact.js");
+        await sessionsCompactCommand(
+          {
+            key,
+            agent: (opts.agent as string | undefined) ?? parentOpts?.agent,
+            maxLines,
+            timeoutMs,
+            json: Boolean(opts.json || parentOpts?.json),
+          },
+          defaultRuntime,
+        );
+      });
+    });
+
+  sessionsCmd
     .command("tail")
     .description("Tail human-readable session trajectory progress")
     .option("--session-key <key>", "Session key to tail (default: active sessions or latest)")
