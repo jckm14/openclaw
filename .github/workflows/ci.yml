@@ -686,51 +686,20 @@ jobs:
         run: |
           set -uo pipefail
 
-          names=()
-          pids=()
-          logs=()
           declare -A results=(
             ["channels"]="skipped"
             ["core-support-boundary"]="skipped"
             ["gateway-watch"]="skipped"
           )
 
-          start_check() {
+          run_check() {
             local name="$1"
             shift
             local log="${RUNNER_TEMP}/${name}.log"
-            names+=("$name")
-            logs+=("$log")
+            local result
+
             echo "starting ${name}: $*"
-            "$@" >"$log" 2>&1 &
-            pids+=("$!")
-          }
-
-          if [ "$RUN_CHANNELS" = "true" ]; then
-            start_check "channels" env \
-              NODE_OPTIONS=--max-old-space-size=8192 \
-              OPENCLAW_VITEST_MAX_WORKERS=1 \
-              pnpm test:channels
-          fi
-
-          if [ "$RUN_CORE_SUPPORT_BOUNDARY" = "true" ]; then
-            start_check "core-support-boundary" env \
-              NODE_OPTIONS=--max-old-space-size=8192 \
-              OPENCLAW_VITEST_MAX_WORKERS=2 \
-              node scripts/run-vitest.mjs run --config test/vitest/vitest.full-core-support-boundary.config.ts
-          fi
-
-          if [ "$RUN_GATEWAY_WATCH" = "true" ]; then
-            start_check "gateway-watch" \
-              node scripts/check-gateway-watch-regression.mjs --skip-build
-          fi
-
-          for index in "${!pids[@]}"; do
-            name="${names[$index]}"
-            log="${logs[$index]}"
-            pid="${pids[$index]}"
-
-            if wait "$pid"; then
+            if "$@" >"$log" 2>&1; then
               result="success"
             else
               result="failure"
@@ -740,7 +709,26 @@ jobs:
             cat "$log"
             echo "::endgroup::"
             results["$name"]="$result"
-          done
+          }
+
+          if [ "$RUN_CHANNELS" = "true" ]; then
+            run_check "channels" env \
+              NODE_OPTIONS=--max-old-space-size=8192 \
+              OPENCLAW_VITEST_MAX_WORKERS=1 \
+              pnpm test:channels
+          fi
+
+          if [ "$RUN_CORE_SUPPORT_BOUNDARY" = "true" ]; then
+            run_check "core-support-boundary" env \
+              NODE_OPTIONS=--max-old-space-size=8192 \
+              OPENCLAW_VITEST_MAX_WORKERS=2 \
+              node scripts/run-vitest.mjs run --config test/vitest/vitest.full-core-support-boundary.config.ts
+          fi
+
+          if [ "$RUN_GATEWAY_WATCH" = "true" ]; then
+            run_check "gateway-watch" \
+              node scripts/check-gateway-watch-regression.mjs --skip-build
+          fi
 
           for name in channels core-support-boundary gateway-watch; do
             echo "${name}-result=${results[$name]}" >> "$GITHUB_OUTPUT"
