@@ -15,6 +15,7 @@ import {
 import {
   emitTrustedDiagnosticEvent,
   emitTrustedDiagnosticEventWithPrivateData,
+  emitTrustedSecurityEvent,
   type DiagnosticEventPrivateData,
   type DiagnosticToolParamsSummary,
   type DiagnosticToolSource,
@@ -126,7 +127,7 @@ export type HookContext = {
   channelId?: string;
   loopDetection?: ToolLoopDetectionConfig;
   onToolOutcome?: ToolOutcomeObserver;
-  allocateToolOutcomeOrdinal?: () => number;
+  allocateToolOutcomeOrdinal?: (toolCallId?: string) => number;
   skillsSnapshot?: SkillSnapshot;
   skillCommand?: {
     commandName: string;
@@ -302,6 +303,7 @@ export function finalizeToolTerminalPresentation(params: {
   isError: boolean;
   observer?: ToolOutcomeObserver;
   toolName?: string;
+  toolCallOrdinal?: number;
 }): void {
   const key = buildAdjustedParamsKey({
     runId: params.runId,
@@ -313,11 +315,12 @@ export function finalizeToolTerminalPresentation(params: {
   if (!observer) {
     return;
   }
+  const toolCallOrdinal = pending?.toolCallOrdinal ?? params.toolCallOrdinal;
   observer({
     toolName: pending?.tool.name || params.toolName || "tool",
     argsHash: "",
     resultHash: "",
-    ...(pending?.toolCallOrdinal !== undefined ? { toolCallOrdinal: pending.toolCallOrdinal } : {}),
+    ...(toolCallOrdinal !== undefined ? { toolCallOrdinal } : {}),
     terminalPresentation: params.isError
       ? undefined
       : pending
@@ -350,13 +353,27 @@ export function recordAdjustedParamsForToolCall(
   if (!toolCallId) {
     return;
   }
+  const cloneResult = cloneParamsForAdjustedReplay(params);
+  if (!cloneResult.ok) {
+    return;
+  }
   const adjustedParamsKey = buildAdjustedParamsKey({ runId, toolCallId });
-  adjustedParamsByToolCallId.set(adjustedParamsKey, structuredClone(params));
+  adjustedParamsByToolCallId.set(adjustedParamsKey, cloneResult.value);
   if (adjustedParamsByToolCallId.size > MAX_TRACKED_ADJUSTED_PARAMS) {
     const oldest = adjustedParamsByToolCallId.keys().next().value;
     if (oldest) {
       adjustedParamsByToolCallId.delete(oldest);
     }
+  }
+}
+
+function cloneParamsForAdjustedReplay(
+  params: unknown,
+): { ok: true; value: unknown } | { ok: false } {
+  try {
+    return { ok: true, value: structuredClone(params) };
+  } catch {
+    return { ok: false };
   }
 }
 
@@ -547,6 +564,63 @@ function emitSkillUsedDiagnostic(params: {
     activation: params.match.activation,
     toolName: params.toolName,
     ...(params.toolCallId && { toolCallId: params.toolCallId }),
+  });
+}
+
+function emitToolBlockedSecurityEvent(params: {
+  ctx?: HookContext;
+  deniedReason: HookBlockedReason;
+  toolIdentity: ToolDiagnosticIdentity;
+  toolName: string;
+  trace?: DiagnosticTraceContext;
+  paramsSummary?: DiagnosticToolParamsSummary;
+}): void {
+  const control =
+    params.deniedReason === "tool-loop"
+      ? ({
+          policyId: "tool-loop-detection",
+          controlId: "tool-loop-detection",
+          family: "authorization",
+        } as const)
+      : params.deniedReason === "plugin-approval"
+        ? ({
+            policyId: "plugin-tool-approval",
+            controlId: "plugin-tool-approval",
+            family: "approval",
+          } as const)
+        : ({
+            policyId: "plugin-before-tool-call",
+            controlId: "before-tool-call",
+            family: "approval",
+          } as const);
+  emitTrustedSecurityEvent({
+    category: "tool",
+    action: "tool.execution.blocked",
+    outcome: "denied",
+    severity: "medium",
+    reason: params.deniedReason,
+    ...(params.trace ? { trace: params.trace } : {}),
+    actor: {
+      kind: "agent",
+    },
+    target: {
+      kind: "tool",
+      name: params.toolName,
+      ...(params.toolIdentity.toolOwner ? { owner: params.toolIdentity.toolOwner } : {}),
+    },
+    policy: {
+      id: control.policyId,
+      decision: "deny",
+      reason: params.deniedReason,
+    },
+    control: {
+      id: control.controlId,
+      family: control.family,
+    },
+    attributes: {
+      tool_source: params.toolIdentity.toolSource,
+      ...(params.paramsSummary ? { params_kind: params.paramsSummary.kind } : {}),
+    },
   });
 }
 
@@ -1292,7 +1366,7 @@ export function wrapToolWithBeforeToolCallHook(
     execute: async (toolCallId, params, signal, onUpdate) => {
       // Allocate before any async preparation so parallel completions retain
       // the assistant message's tool-call order.
-      const toolCallOrdinal = ctx?.allocateToolOutcomeOrdinal?.();
+      const toolCallOrdinal = ctx?.allocateToolOutcomeOrdinal?.(toolCallId);
       const prepare = (tool as BeforeToolCallPreparingTool).prepareBeforeToolCallParams;
       const preparedParams = prepare
         ? await prepare(params, {
@@ -1336,6 +1410,14 @@ export function wrapToolWithBeforeToolCallHook(
             ...eventBase,
             reason: outcome.reason,
             deniedReason: outcome.deniedReason ?? "plugin-before-tool-call",
+          });
+          emitToolBlockedSecurityEvent({
+            ctx,
+            deniedReason: outcome.deniedReason ?? "plugin-before-tool-call",
+            toolIdentity: diagnosticIdentity,
+            toolName: normalizedToolName,
+            trace,
+            paramsSummary: eventBase.paramsSummary,
           });
         }
         const blockedResult = buildBlockedToolResult({

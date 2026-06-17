@@ -14,8 +14,8 @@ import {
   resolveSessionGoalDisplayState,
   type SessionSystemPromptReport,
   type SessionEntry,
-  updateSessionStoreEntry,
 } from "../../config/sessions.js";
+import { updateSessionEntry } from "../../config/sessions/session-accessor.js";
 import type { OpenClawConfig } from "../../config/types.openclaw.js";
 import { logVerbose } from "../../globals.js";
 import { estimateUsageCost, resolveModelCostConfig } from "../../utils/usage-format.js";
@@ -141,12 +141,12 @@ export async function persistSessionUsageUpdate(params: {
 
   if (hasUsage || hasFreshContextSnapshot || hasCompactionSnapshot) {
     try {
-      await updateSessionStoreEntry({
-        storePath,
-        sessionKey,
-        skipMaintenance: true,
-        takeCacheOwnership: true,
-        update: async (entry) => {
+      await updateSessionEntry(
+        {
+          storePath,
+          sessionKey,
+        },
+        async (entry) => {
           const updatedAt = Date.now();
           const preserveSessionModelState =
             params.isHeartbeat === true ||
@@ -241,7 +241,11 @@ export async function persistSessionUsageUpdate(params: {
             ? patch
             : applyCliSessionIdToSessionPatch(params, entry, patch);
         },
-      });
+        {
+          skipMaintenance: true,
+          takeCacheOwnership: true,
+        },
+      );
     } catch (err) {
       logVerbose(`failed to persist ${label}usage update: ${String(err)}`);
     }
@@ -250,12 +254,12 @@ export async function persistSessionUsageUpdate(params: {
 
   if (params.modelUsed || params.contextTokensUsed) {
     try {
-      await updateSessionStoreEntry({
-        storePath,
-        sessionKey,
-        skipMaintenance: true,
-        takeCacheOwnership: true,
-        update: async (entry) => {
+      await updateSessionEntry(
+        {
+          storePath,
+          sessionKey,
+        },
+        async (entry) => {
           const preserveSessionModelState =
             params.isHeartbeat === true ||
             params.preserveRuntimeModel === true ||
@@ -275,11 +279,24 @@ export async function persistSessionUsageUpdate(params: {
               : (params.systemPromptReport ?? entry.systemPromptReport),
             updatedAt: Date.now(),
           };
+          if (
+            !preserveUserFacingRunState &&
+            (params.preserveFreshTotalTokensOnStaleUsage !== true ||
+              entry.totalTokensFresh !== true)
+          ) {
+            // A completed run without a context snapshot invalidates any fresh
+            // zero persisted for the previously empty session.
+            patch.totalTokensFresh = false;
+          }
           return preserveSessionModelState
             ? patch
             : applyCliSessionIdToSessionPatch(params, entry, patch);
         },
-      });
+        {
+          skipMaintenance: true,
+          takeCacheOwnership: true,
+        },
+      );
     } catch (err) {
       logVerbose(`failed to persist ${label}model/context update: ${String(err)}`);
     }

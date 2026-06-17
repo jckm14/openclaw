@@ -1,5 +1,6 @@
 {
   "originHash" : "7df10eb7c90ebe3838e5594c679e0373b4766de45b123745853c1f9c0432769e",
+  "originHash" : "4f7b315ce0e0a16d150d8d74dce445628c03d8926485ad2f5595e091b4d33440",
   "pins" : [
     {
       "identity" : "axorcist",
@@ -44,6 +45,8 @@
       "state" : {
         "revision" : "f22e46cc1aedf2c409e2fbb07efe6c9577662f38",
         "version" : "3.5.3"
+        "revision" : "1fa8eead7eeac3ff618a3111fc333ae78db043d2",
+        "version" : "3.5.2"
       }
     },
     {
