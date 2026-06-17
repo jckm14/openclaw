@@ -389,6 +389,7 @@ Save to `~/.openclaw/openclaw.json` and you can DM the bot from that number.
     runLog: {
       maxBytes: "2mb",
       keepLines: 2000,
+      maxAge: "7d",
     },
   },
 

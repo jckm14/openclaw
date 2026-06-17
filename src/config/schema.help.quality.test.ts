@@ -144,6 +144,7 @@ const TARGET_KEYS = [
   "cron.runLog",
   "cron.runLog.maxBytes",
   "cron.runLog.keepLines",
+  "cron.runLog.maxAge",
   "session",
   "session.scope",
   "session.dmScope",
@@ -815,6 +816,10 @@ describe("config help copy quality", () => {
 
     const keepLines = FIELD_HELP["cron.runLog.keepLines"];
     expect(keepLines.includes("2000")).toBe(true);
+
+    const maxAge = FIELD_HELP["cron.runLog.maxAge"];
+    expect(maxAge.includes("7d")).toBe(true);
+    expect(/false/i.test(maxAge)).toBe(true);
   });
 
   it("documents approvals filters and target semantics", () => {

@@ -654,7 +654,7 @@ export function buildGatewayCronService(params: {
             provider: evt.provider,
             usage: evt.usage,
           },
-          opts: { keepLines: runLogPrune.keepLines },
+          opts: { keepLines: runLogPrune.keepLines, maxAgeMs: runLogPrune.maxAgeMs },
         }).catch((err: unknown) => {
           cronLogger.warn(
             { err: String(err), storePath, jobId: evt.jobId },

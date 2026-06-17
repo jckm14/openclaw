@@ -425,13 +425,14 @@ candidate contains redacted secret placeholders such as `***`.
         runLog: {
           maxBytes: "2mb",
           keepLines: 2000,
+          maxAge: "7d",
         },
       },
     }
     ```
 
     - `sessionRetention`: prune completed isolated run sessions from `sessions.json` (default `24h`; set `false` to disable).
-    - `runLog`: prune retained cron run-history rows per job. `maxBytes` remains accepted for older file-backed run logs.
+    - `runLog`: prune visible cron Run history separately from session retention. `keepLines` caps retained rows per job, `maxAge` prunes old rows by age, and `maxBytes` remains accepted for older file-backed run logs.
     - See [Cron jobs](/automation/cron-jobs) for feature overview and CLI examples.
 
   </Accordion>

@@ -492,7 +492,7 @@ Model override note:
     },
     webhookToken: "replace-with-dedicated-webhook-token",
     sessionRetention: "24h",
-    runLog: { maxBytes: "2mb", keepLines: 2000 },
+    runLog: { maxBytes: "2mb", keepLines: 2000, maxAge: "7d" },
   },
 }
 ```
@@ -511,7 +511,7 @@ Disable cron: `cron.enabled: false` or `OPENCLAW_SKIP_CRON=1`.
 
   </Accordion>
   <Accordion title="Maintenance">
-    `cron.sessionRetention` (default `24h`) prunes isolated run-session entries. `cron.runLog.keepLines` limits retained SQLite run-history rows per job; `maxBytes` is retained for config compatibility with older file-backed run logs.
+    `cron.sessionRetention` (default `24h`) prunes isolated run-session entries. Visible Run history is controlled separately by `cron.runLog.keepLines` and optional `cron.runLog.maxAge`; `maxBytes` is retained for config compatibility with older file-backed run logs.
   </Accordion>
 </AccordionGroup>
 

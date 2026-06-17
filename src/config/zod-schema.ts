@@ -851,6 +851,7 @@ export const OpenClawSchema = z
           .object({
             maxBytes: z.union([z.string(), z.number()]).optional(),
             keepLines: z.number().int().positive().optional(),
+            maxAge: z.union([z.string(), z.literal(false)]).optional(),
           })
           .strict()
           .optional(),
@@ -900,6 +901,19 @@ export const OpenClawSchema = z
               code: z.ZodIssueCode.custom,
               path: ["runLog", "maxBytes"],
               message: "invalid size (use b, kb, mb, gb, tb)",
+            });
+          }
+        }
+        if (val.runLog?.maxAge !== undefined && val.runLog.maxAge !== false) {
+          try {
+            parseDurationMs(normalizeStringifiedOptionalString(val.runLog.maxAge) ?? "", {
+              defaultUnit: "h",
+            });
+          } catch {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["runLog", "maxAge"],
+              message: "invalid duration (use ms, s, m, h, d)",
             });
           }
         }

@@ -53,11 +53,12 @@ export type CronConfig = {
   /**
    * Run-history pruning controls. History is stored in SQLite; maxBytes is
    * retained for compatibility with older file-backed run logs.
-   * Defaults: `maxBytes=2_000_000`, `keepLines=2000`.
+   * Defaults: `maxBytes=2_000_000`, `keepLines=2000`, no age limit.
    */
   runLog?: {
     maxBytes?: number | string;
     keepLines?: number;
+    maxAge?: string | false;
   };
   failureAlert?: CronFailureAlertConfig;
   /** Default destination for failure notifications across all cron jobs. */

@@ -1301,6 +1301,7 @@ Current builds no longer include the TCP bridge. Nodes connect over the Gateway 
     runLog: {
       maxBytes: "2mb", // default 2_000_000 bytes
       keepLines: 2000, // default 2000
+      maxAge: "7d", // optional duration string or false
     },
   },
 }
@@ -1309,6 +1310,7 @@ Current builds no longer include the TCP bridge. Nodes connect over the Gateway 
 - `sessionRetention`: how long to keep completed isolated cron run sessions before pruning from `sessions.json`. Also controls cleanup of archived deleted cron transcripts. Default: `24h`; set `false` to disable.
 - `runLog.maxBytes`: accepted for compatibility with older file-backed cron run logs. Default: `2_000_000` bytes.
 - `runLog.keepLines`: newest SQLite run-history rows retained per job. Default: `2000`.
+- `runLog.maxAge`: optional duration for pruning visible Run history rows by age, such as `7d` or `24h`; set `false` or omit to disable age pruning.
 - `webhookToken`: bearer token used for cron webhook POST delivery (`delivery.mode = "webhook"`), if omitted no auth header is sent.
 - `webhook`: deprecated legacy fallback webhook URL (http/https) used by `openclaw doctor --fix` to migrate stored jobs that still have `notify: true`; runtime delivery uses per-job `delivery.mode="webhook"` plus `delivery.to`, or `delivery.completionDestination` when preserving announce delivery.
 

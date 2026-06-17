@@ -235,7 +235,19 @@ export function pruneCronRunLogRows(
   storeKey: string,
   jobId: string,
   keepLines: number,
+  maxAgeCutoffMs?: number,
 ): void {
+  if (typeof maxAgeCutoffMs === "number" && Number.isFinite(maxAgeCutoffMs)) {
+    executeSqliteQuerySync(
+      db,
+      getCronRunLogKysely(db)
+        .deleteFrom("cron_run_logs")
+        .where("store_key", "=", storeKey)
+        .where("job_id", "=", jobId)
+        .where("ts", "<", maxAgeCutoffMs),
+    );
+  }
+
   const keep = Math.max(1, Math.floor(keepLines));
   const keepSeqs = getCronRunLogKysely(db)
     .selectFrom("cron_run_logs")
