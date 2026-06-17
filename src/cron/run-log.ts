@@ -6,6 +6,7 @@ import {
 } from "@openclaw/normalization-core/string-coerce";
 import { uniqueValues } from "@openclaw/normalization-core/string-normalization";
 import { parseByteSize } from "../cli/parse-bytes.js";
+import { parseDurationMs } from "../cli/parse-duration.js";
 import type { CronConfig } from "../config/types.cron.js";
 import {
   openOpenClawStateDatabase,
@@ -57,6 +58,8 @@ type ReadCronRunLogAllPageOptions = Omit<ReadCronRunLogPageOptions, "jobId"> & {
 
 type AppendCronRunLogOptions = {
   keepLines?: number | false;
+  maxAgeMs?: number | null;
+  nowMs?: number;
 };
 
 const INVALID_CRON_RUN_LOG_JOB_ID_MESSAGE = "invalid cron run log job id";
@@ -88,6 +91,7 @@ export const DEFAULT_CRON_RUN_LOG_KEEP_LINES = 2_000;
 export function resolveCronRunLogPruneOptions(cfg?: CronConfig["runLog"]): {
   maxBytes: number;
   keepLines: number;
+  maxAgeMs: number | null;
 } {
   let maxBytes = DEFAULT_CRON_RUN_LOG_MAX_BYTES;
   if (cfg?.maxBytes !== undefined) {
@@ -106,9 +110,21 @@ export function resolveCronRunLogPruneOptions(cfg?: CronConfig["runLog"]): {
     keepLines = Math.floor(cfg.keepLines);
   }
 
+  let maxAgeMs: number | null = null;
+  if (cfg?.maxAge !== undefined && cfg.maxAge !== false) {
+    try {
+      const configuredMaxAge = normalizeStringifiedOptionalString(cfg.maxAge);
+      if (configuredMaxAge) {
+        maxAgeMs = parseDurationMs(configuredMaxAge, { defaultUnit: "h" });
+      }
+    } catch {
+      maxAgeMs = null;
+    }
+  }
+
   // `maxBytes` remains accepted for older file-backed config. SQLite runtime
-  // pruning uses row counts (`keepLines`) only.
-  return { maxBytes, keepLines };
+  // pruning uses row counts (`keepLines`) plus optional age retention.
+  return { maxBytes, keepLines, maxAgeMs };
 }
 
 /** Exposes the in-process async write queue size for run-log concurrency tests. */
@@ -153,6 +169,9 @@ export async function appendCronRunLog(params: {
             storeKey,
             params.entry.jobId,
             params.opts?.keepLines ?? DEFAULT_CRON_RUN_LOG_KEEP_LINES,
+            typeof params.opts?.maxAgeMs === "number"
+              ? (params.opts.nowMs ?? Date.now()) - params.opts.maxAgeMs
+              : undefined,
           );
         }
       });

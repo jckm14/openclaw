@@ -10,6 +10,7 @@ describe("OpenClawSchema cron retention and run-log validation", () => {
         runLog: {
           maxBytes: "5mb",
           keepLines: 2500,
+          maxAge: "7d",
         },
       },
     });
@@ -36,5 +37,17 @@ describe("OpenClawSchema cron retention and run-log validation", () => {
         },
       }),
     ).toThrow(/runLog|maxBytes|size/i);
+  });
+
+  it("rejects invalid cron.runLog.maxAge", () => {
+    expect(() =>
+      OpenClawSchema.parse({
+        cron: {
+          runLog: {
+            maxAge: "later",
+          },
+        },
+      }),
+    ).toThrow(/runLog|maxAge|duration/i);
   });
 });

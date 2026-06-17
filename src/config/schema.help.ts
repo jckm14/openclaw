@@ -1723,6 +1723,8 @@ export const FIELD_HELP: Record<string, string> = {
     "Compatibility setting for older file-backed cron run logs (for example `2mb`, default `2000000`). SQLite run history pruning is row-count based.",
   "cron.runLog.keepLines":
     "How many trailing run-history rows to retain per cron job (default `2000`). Increase for longer forensic history or lower for smaller disks.",
+  "cron.runLog.maxAge":
+    "Optional age limit for cron run-history rows (for example `7d`, `24h`, or `false` to disable). Prunes old visible Run history even when row counts stay below keepLines.",
   transcripts:
     "Core transcript capture settings for recording-capable agent tools and configured live meeting auto-start sources. Keep disabled unless operators explicitly want agents to capture or import meeting transcripts.",
   "transcripts.enabled":

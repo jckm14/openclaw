@@ -20,24 +20,29 @@ describe("cron run log", () => {
     expect(resolveCronRunLogPruneOptions()).toEqual({
       maxBytes: DEFAULT_CRON_RUN_LOG_MAX_BYTES,
       keepLines: DEFAULT_CRON_RUN_LOG_KEEP_LINES,
+      maxAgeMs: null,
     });
     expect(
       resolveCronRunLogPruneOptions({
         maxBytes: "5mb",
         keepLines: 123,
+        maxAge: "7d",
       }),
     ).toEqual({
       maxBytes: 5 * 1024 * 1024,
       keepLines: 123,
+      maxAgeMs: 7 * 24 * 60 * 60 * 1000,
     });
     expect(
       resolveCronRunLogPruneOptions({
         maxBytes: "invalid",
         keepLines: -1,
+        maxAge: "invalid",
       }),
     ).toEqual({
       maxBytes: DEFAULT_CRON_RUN_LOG_MAX_BYTES,
       keepLines: DEFAULT_CRON_RUN_LOG_KEEP_LINES,
+      maxAgeMs: null,
     });
   });
 
@@ -85,6 +90,39 @@ describe("cron run log", () => {
       expect(entries.map((entry) => entry.ts)).toEqual([1007, 1008, 1009]);
       const logPath = path.join(dir, "runs", "job-1.jsonl");
       await expect(fs.stat(logPath)).rejects.toMatchObject({ code: "ENOENT" });
+    });
+  });
+
+  it("prunes SQLite rows older than maxAge even when below keepLines", async () => {
+    await withRunLogDir("openclaw-cron-log-age-", async (dir) => {
+      const storePath = storePathForDir(dir);
+      const nowMs = 10_000;
+
+      await appendCronRunLog({
+        storePath,
+        entry: {
+          ts: nowMs - 5_000,
+          jobId: "job-1",
+          action: "finished",
+          status: "ok",
+          summary: "old",
+        },
+        opts: { keepLines: 100, maxAgeMs: 2_000, nowMs },
+      });
+      await appendCronRunLog({
+        storePath,
+        entry: {
+          ts: nowMs - 1_000,
+          jobId: "job-1",
+          action: "finished",
+          status: "ok",
+          summary: "new",
+        },
+        opts: { keepLines: 100, maxAgeMs: 2_000, nowMs },
+      });
+
+      const entries = readCronRunLogEntriesSync({ storePath, jobId: "job-1", limit: 10 });
+      expect(entries.map((entry) => entry.summary)).toEqual(["new"]);
     });
   });
 
