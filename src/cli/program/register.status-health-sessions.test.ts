@@ -10,7 +10,6 @@ const mocks = vi.hoisted(() => ({
   sessionsCompactCommand: vi.fn(),
   sessionsCleanupCommand: vi.fn(),
   sessionsTailCommand: vi.fn(),
-  sessionsCompactCommand: vi.fn(),
   exportTrajectoryCommand: vi.fn(),
   commitmentsListCommand: vi.fn(),
   commitmentsDismissCommand: vi.fn(),
@@ -37,7 +36,6 @@ const sessionsCommand = mocks.sessionsCommand;
 const sessionsCompactCommand = mocks.sessionsCompactCommand;
 const sessionsCleanupCommand = mocks.sessionsCleanupCommand;
 const sessionsTailCommand = mocks.sessionsTailCommand;
-const sessionsCompactCommand = mocks.sessionsCompactCommand;
 const exportTrajectoryCommand = mocks.exportTrajectoryCommand;
 const commitmentsListCommand = mocks.commitmentsListCommand;
 const commitmentsDismissCommand = mocks.commitmentsDismissCommand;
@@ -103,10 +101,6 @@ vi.mock("../../commands/sessions-tail.js", () => ({
   sessionsTailCommand: mocks.sessionsTailCommand,
 }));
 
-vi.mock("../../commands/sessions-compact.js", () => ({
-  sessionsCompactCommand: mocks.sessionsCompactCommand,
-}));
-
 vi.mock("../../commands/export-trajectory.js", () => ({
   exportTrajectoryCommand: mocks.exportTrajectoryCommand,
 }));
@@ -155,7 +149,6 @@ describe("registerStatusHealthSessionsCommands", () => {
     sessionsCompactCommand.mockResolvedValue(undefined);
     sessionsCleanupCommand.mockResolvedValue(undefined);
     sessionsTailCommand.mockResolvedValue(undefined);
-    sessionsCompactCommand.mockResolvedValue(undefined);
     exportTrajectoryCommand.mockResolvedValue(undefined);
     commitmentsListCommand.mockResolvedValue(undefined);
     commitmentsDismissCommand.mockResolvedValue(undefined);
