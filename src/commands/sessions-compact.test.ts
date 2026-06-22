@@ -1,10 +1,13 @@
 // Sessions compact command tests cover non-zero exits on failure and param forwarding.
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { callGateway } from "../gateway/call.js";
 import { sessionsCompactCommand } from "./sessions-compact.js";
 
-const callGatewayCli = vi.hoisted(() => vi.fn());
+vi.mock("../gateway/call.js", () => ({
+  callGateway: vi.fn(),
+}));
 
-vi.mock("../cli/gateway-cli/call.js", () => ({ callGatewayCli }));
+const mockedCallGateway = vi.mocked(callGateway);
 
 function createRuntime() {
   return {
@@ -20,13 +23,46 @@ function joinedArgs(mock: { mock: { calls: unknown[][] } }): string {
   return mock.mock.calls.map((call) => String(call[0])).join("\n");
 }
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
 describe("sessionsCompactCommand", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("calls the gateway sessions.compact method with CLI recovery params", async () => {
+    const runtime = createRuntime();
+    mockedCallGateway.mockResolvedValueOnce({
+      ok: true,
+      key: "agent:main:main",
+      compacted: true,
+    });
+
+    await sessionsCompactCommand(
+      {
+        key: "agent:main:main",
+        agent: "main",
+        maxLines: 2000,
+        timeoutMs: 30_000,
+      },
+      runtime,
+    );
+
+    expect(mockedCallGateway).toHaveBeenCalledWith({
+      method: "sessions.compact",
+      params: {
+        key: "agent:main:main",
+        agentId: "main",
+        maxLines: 2000,
+      },
+      mode: "cli",
+      clientName: "cli",
+      requiredMethods: ["sessions.compact"],
+      timeoutMs: 30_000,
+    });
+    expect(runtime.log).toHaveBeenCalledWith("Compacted session agent:main:main.");
+  });
+
   it("prints the token delta and does not exit on a successful compaction", async () => {
-    callGatewayCli.mockResolvedValue({
+    mockedCallGateway.mockResolvedValueOnce({
       ok: true,
       key: "agent:main:main",
       compacted: true,
@@ -43,10 +79,7 @@ describe("sessionsCompactCommand", () => {
   });
 
   it("reports an asynchronously started Codex compaction as pending, not a no-op", async () => {
-    // Codex app-server `thread/compact/start` returns ok:true / compacted:false
-    // with a pending marker; completion is delivered later, so this is a started
-    // compaction, NOT "no compaction needed".
-    callGatewayCli.mockResolvedValue({
+    mockedCallGateway.mockResolvedValueOnce({
       ok: true,
       key: "agent:main:main",
       compacted: false,
@@ -65,8 +98,8 @@ describe("sessionsCompactCommand", () => {
     expect(logged).not.toContain("No compaction needed");
   });
 
-  it("exits non-zero when the gateway reports ok:false (no silent no-op)", async () => {
-    callGatewayCli.mockResolvedValue({
+  it("exits non-zero when the gateway reports ok:false", async () => {
+    mockedCallGateway.mockResolvedValueOnce({
       ok: false,
       key: "agent:main:main",
       compacted: false,
@@ -81,7 +114,7 @@ describe("sessionsCompactCommand", () => {
   });
 
   it("exits non-zero when the gateway response omits explicit success", async () => {
-    callGatewayCli.mockResolvedValue({ key: "agent:main:main", compacted: false });
+    mockedCallGateway.mockResolvedValueOnce({ key: "agent:main:main", compacted: false });
     const runtime = createRuntime();
 
     await sessionsCompactCommand({ key: "agent:main:main" }, runtime);
@@ -91,7 +124,7 @@ describe("sessionsCompactCommand", () => {
   });
 
   it("exits non-zero and surfaces the error when the RPC throws", async () => {
-    callGatewayCli.mockRejectedValue(new Error("gateway unreachable"));
+    mockedCallGateway.mockRejectedValueOnce(new Error("gateway unreachable"));
     const runtime = createRuntime();
 
     await sessionsCompactCommand({ key: "agent:main:main" }, runtime);
@@ -107,7 +140,7 @@ describe("sessionsCompactCommand", () => {
       compacted: false,
       reason: "summarize interrupted",
     };
-    callGatewayCli.mockResolvedValue(payload);
+    mockedCallGateway.mockResolvedValueOnce(payload);
     const runtime = createRuntime();
 
     await sessionsCompactCommand({ key: "agent:main:main", json: true }, runtime);
@@ -115,22 +148,5 @@ describe("sessionsCompactCommand", () => {
     expect(runtime.writeJson).toHaveBeenCalledTimes(1);
     expect(runtime.writeJson.mock.calls[0][0]).toEqual(payload);
     expect(runtime.exit).toHaveBeenCalledWith(1);
-  });
-
-  it("forwards agentId and maxLines to the RPC params", async () => {
-    callGatewayCli.mockResolvedValue({
-      ok: true,
-      key: "agent:work:main",
-      compacted: true,
-      kept: 200,
-    });
-    const runtime = createRuntime();
-
-    await sessionsCompactCommand({ key: "agent:work:main", agent: "work", maxLines: 200 }, runtime);
-
-    expect(callGatewayCli).toHaveBeenCalledTimes(1);
-    const [method, , params] = callGatewayCli.mock.calls[0];
-    expect(method).toBe("sessions.compact");
-    expect(params).toEqual({ key: "agent:work:main", agentId: "work", maxLines: 200 });
   });
 });
