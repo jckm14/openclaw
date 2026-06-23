@@ -30,7 +30,7 @@ jobs:
         id: app-token
         continue-on-error: true
         with:
-          app-id: "2729701"
+          client-id: ${{ vars.GH_APP_CLIENT_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           permission-issues: read
           permission-members: read
@@ -39,7 +39,7 @@ jobs:
         if: steps.app-token.outcome == 'failure'
         continue-on-error: true
         with:
-          app-id: "2971289"
+          client-id: ${{ vars.GH_APP_CLIENT_ID_FALLBACK }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY_FALLBACK }}
           permission-issues: read
           permission-members: read

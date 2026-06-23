@@ -59,7 +59,7 @@ jobs:
         continue-on-error: true
         uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
         with:
-          app-id: "2729701"
+          client-id: ${{ vars.GH_APP_CLIENT_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           owner: ${{ needs.dependency-guard-detect.outputs.autoscrub-owner }}
           repositories: ${{ needs.dependency-guard-detect.outputs.autoscrub-repository }}
@@ -71,7 +71,7 @@ jobs:
         if: steps.app-token.outcome == 'failure'
         uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
         with:
-          app-id: "2971289"
+          client-id: ${{ vars.GH_APP_CLIENT_ID_FALLBACK }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY_FALLBACK }}
           owner: ${{ needs.dependency-guard-detect.outputs.autoscrub-owner }}
           repositories: ${{ needs.dependency-guard-detect.outputs.autoscrub-repository }}
