@@ -165,6 +165,10 @@ export function formatChatModelDisplay(value: string): string {
   return `${trimmed.slice(separator + 1)} · ${trimmed.slice(0, separator)}`;
 }
 
+function createQualifiedCatalogKey(entry: ModelCatalogEntry): string {
+  return buildQualifiedChatModelValue(entry.id, entry.provider).trim().toLowerCase();
+}
+
 function formatRawCatalogLabel(entry: ModelCatalogEntry): string {
   const provider = entry.provider?.trim();
   return provider ? `${entry.id} · ${provider}` : entry.id;
@@ -172,10 +176,6 @@ function formatRawCatalogLabel(entry: ModelCatalogEntry): string {
 
 function resolveCatalogDisplayName(entry: ModelCatalogEntry): string {
   return entry.alias?.trim() || entry.name.trim();
-}
-
-function createQualifiedCatalogKey(entry: ModelCatalogEntry): string {
-  return buildQualifiedChatModelValue(entry.id, entry.provider).trim().toLowerCase();
 }
 
 function createNameProviderKey(name: string, provider?: string | null): string {
@@ -269,8 +269,9 @@ export function buildChatModelOptionFromLookup(
   displayLookup: ChatModelDisplayLookup,
 ): { value: string; label: string } {
   const provider = entry.provider?.trim();
+  const value = buildQualifiedChatModelValue(entry.id, provider);
   return {
-    value: buildQualifiedChatModelValue(entry.id, provider),
+    value,
     label: formatCatalogEntryDisplay(entry, displayLookup),
   };
 }

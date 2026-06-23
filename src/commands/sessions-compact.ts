@@ -1,28 +1,26 @@
 /**
  * Sessions compact command.
  *
- * Wraps the `sessions.compact` Gateway RPC behind `openclaw sessions compact <key>`
+ * Wraps the sessions.compact Gateway RPC behind `openclaw sessions compact <key>`
  * so wedged sessions have a documented, first-class recovery path. The command
  * propagates a non-zero exit whenever the gateway reports a failed compaction
- * (transport error or an `ok:false` payload) so automation never mistakes a
- * silent no-op for success.
+ * so automation never mistakes a silent no-op for success.
  */
-import { callGatewayCli, type GatewayRpcOpts } from "../cli/gateway-cli/call.js";
+import { callGateway } from "../gateway/call.js";
 import { formatErrorMessage } from "../infra/errors.js";
-import { type RuntimeEnv, writeRuntimeJson } from "../runtime.js";
+import type { RuntimeEnv } from "../runtime.js";
+import { defaultRuntime, writeRuntimeJson } from "../runtime.js";
+import { GATEWAY_CLIENT_MODES, GATEWAY_CLIENT_NAMES } from "../utils/message-channel.js";
 
-export type SessionsCompactCliOptions = {
+export type SessionsCompactCommandOptions = {
   key: string;
   agent?: string;
   maxLines?: number;
-  timeout?: string;
-  url?: string;
-  token?: string;
-  password?: string;
   json?: boolean;
+  timeoutMs?: number;
 };
 
-type SessionsCompactResult = {
+type SessionsCompactGatewayResult = {
   ok?: boolean;
   key?: string;
   compacted?: boolean;
@@ -34,9 +32,6 @@ type SessionsCompactResult = {
     tokensAfter?: number;
     sessionId?: string;
     sessionFile?: string;
-    // Codex app-server `thread/compact/start` reports ok:true / compacted:false
-    // with this pending marker; the compaction was *started* and completion is
-    // delivered asynchronously, so it must not be rendered as "no work needed".
     details?: {
       backend?: string;
       threadId?: string;
@@ -46,50 +41,48 @@ type SessionsCompactResult = {
   };
 };
 
-function describeCompaction(result: SessionsCompactResult, fallbackKey: string): string {
-  const sessionKey = result.key ?? fallbackKey;
+function formatCompactStatus(result: SessionsCompactGatewayResult, fallbackKey: string): string {
+  const key = result.key ?? fallbackKey;
+  const details = result.result?.details;
   if (!result.compacted) {
-    const details = result.result?.details;
     if (details?.pending === true || details?.signal === "thread/compact/start") {
-      return `Compaction started for session ${sessionKey} (pending; completion is reported asynchronously by the backend).`;
+      return `Compaction started for session ${key} (pending; completion is reported asynchronously by the backend).`;
     }
     const reason = result.reason ? ` (${result.reason})` : "";
-    return `No compaction needed for session ${sessionKey}${reason}.`;
+    return `No compaction needed for session ${key}${reason}.`;
   }
+
   const before = result.result?.tokensBefore;
   const after = result.result?.tokensAfter;
   let detail = "";
   if (typeof before === "number" && typeof after === "number") {
-    detail = ` (${before} → ${after} tokens)`;
+    detail = ` (${before} -> ${after} tokens)`;
   } else if (typeof result.kept === "number") {
     detail = ` (kept ${result.kept} lines)`;
   }
-  return `Compacted session ${sessionKey}${detail}.`;
+  return `Compacted session ${key}${detail}.`;
 }
 
-/** Run `openclaw sessions compact <key>` against the running gateway. */
 export async function sessionsCompactCommand(
-  opts: SessionsCompactCliOptions,
-  runtime: RuntimeEnv,
+  opts: SessionsCompactCommandOptions,
+  runtime: RuntimeEnv = defaultRuntime,
 ): Promise<void> {
-  const rpcOpts: GatewayRpcOpts = {
-    url: opts.url,
-    token: opts.token,
-    password: opts.password,
-    timeout: opts.timeout,
-    json: opts.json,
-  };
-  const params = {
-    key: opts.key,
-    ...(opts.agent ? { agentId: opts.agent } : {}),
-    ...(opts.maxLines !== undefined ? { maxLines: opts.maxLines } : {}),
-  };
-
-  let result: SessionsCompactResult;
+  let result: SessionsCompactGatewayResult;
   try {
-    result = (await callGatewayCli("sessions.compact", rpcOpts, params)) as SessionsCompactResult;
-  } catch (err) {
-    const message = formatErrorMessage(err);
+    result = await callGateway<SessionsCompactGatewayResult>({
+      method: "sessions.compact",
+      params: {
+        key: opts.key,
+        ...(opts.agent ? { agentId: opts.agent } : {}),
+        ...(opts.maxLines !== undefined ? { maxLines: opts.maxLines } : {}),
+      },
+      mode: GATEWAY_CLIENT_MODES.CLI,
+      clientName: GATEWAY_CLIENT_NAMES.CLI,
+      requiredMethods: ["sessions.compact"],
+      timeoutMs: opts.timeoutMs,
+    });
+  } catch (error) {
+    const message = formatErrorMessage(error);
     if (opts.json) {
       writeRuntimeJson(runtime, { ok: false, key: opts.key, error: message });
     } else {
@@ -99,10 +92,7 @@ export async function sessionsCompactCommand(
     return;
   }
 
-  // Success is explicit. A malformed or version-skewed payload must not turn
-  // into the same exit-0 message as a genuine no-op compaction.
   const failed = result?.ok !== true;
-
   if (opts.json) {
     writeRuntimeJson(runtime, result);
     if (failed) {
@@ -112,15 +102,15 @@ export async function sessionsCompactCommand(
   }
 
   if (failed) {
-    const sessionKey = result?.key ?? opts.key;
+    const key = result?.key ?? opts.key;
     const reason = result?.reason ? `: ${result.reason}` : "";
-    runtime.error(`Compaction failed for session ${sessionKey}${reason}.`);
+    runtime.error(`Compaction failed for session ${key}${reason}.`);
     runtime.exit(1);
     return;
   }
 
-  runtime.log(describeCompaction(result ?? {}, opts.key));
-  if (result?.archived) {
+  runtime.log(formatCompactStatus(result, opts.key));
+  if (result.archived) {
     runtime.log(`Archived transcript: ${result.archived}`);
   }
 }

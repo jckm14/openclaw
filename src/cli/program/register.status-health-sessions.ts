@@ -31,6 +31,13 @@ const loadCommitmentsCommands = createModuleLoader(() => import("../../commands/
 const loadTasksCommands = createModuleLoader(() => import("../../commands/tasks.js"));
 const loadFlowsCommands = createModuleLoader(() => import("../../commands/flows.js"));
 
+type SessionsCompactCliOptions = {
+  agent?: string;
+  maxLines?: string;
+  timeout?: string;
+  json?: boolean;
+};
+
 function addSessionsListOptions(command: Command): Command {
   return command
     .option("--json", "Output as JSON", false)
@@ -87,6 +94,16 @@ function parseTasksAuditLimit(limit: unknown): number | null | undefined {
   const parsed = parseStrictPositiveIntOrUndefined(limit);
   if (limit !== undefined && parsed === undefined) {
     defaultRuntime.error("--limit must be a positive integer, for example --limit 25.");
+    defaultRuntime.exit(1);
+    return null;
+  }
+  return parsed;
+}
+
+function parseSessionsCompactMaxLines(maxLines: unknown): number | null | undefined {
+  const parsed = parseStrictPositiveIntOrUndefined(maxLines);
+  if (maxLines !== undefined && parsed === undefined) {
+    defaultRuntime.error("--max-lines must be a positive integer, for example --max-lines 2000.");
     defaultRuntime.exit(1);
     return null;
   }
@@ -217,6 +234,44 @@ export function registerStatusHealthSessionsCommands(program: Command) {
     const parentOpts = command.parent?.opts() as SessionsListCliOptions | undefined;
     await runSessionsListCli(mergeSessionsListOptions(opts as SessionsListCliOptions, parentOpts));
   });
+
+  sessionsCmd
+    .command("compact")
+    .description("Request compaction for a stored session")
+    .argument("<key>", "Session key to compact")
+    .option("--agent <id>", "Agent id for selected global sessions")
+    .option("--max-lines <count>", "Maximum transcript lines to retain before archiving")
+    .option("--timeout <ms>", "Gateway request timeout in milliseconds", "30000")
+    .option("--json", "Output JSON", false)
+    .action(async (key: string, opts: SessionsCompactCliOptions, command) => {
+      const parentOpts = command.parent?.opts() as
+        | {
+            agent?: string;
+            json?: boolean;
+          }
+        | undefined;
+      const timeoutMs = parseTimeoutMs(opts.timeout);
+      if (timeoutMs === null) {
+        return;
+      }
+      const maxLines = parseSessionsCompactMaxLines(opts.maxLines);
+      if (maxLines === null) {
+        return;
+      }
+      await runCommandWithRuntime(defaultRuntime, async () => {
+        const { sessionsCompactCommand } = await import("../../commands/sessions-compact.js");
+        await sessionsCompactCommand(
+          {
+            key,
+            agent: opts.agent ?? parentOpts?.agent,
+            maxLines,
+            json: Boolean(opts.json || parentOpts?.json),
+            timeoutMs,
+          },
+          defaultRuntime,
+        );
+      });
+    });
 
   sessionsCmd
     .command("cleanup")
@@ -448,10 +503,7 @@ export function registerStatusHealthSessionsCommands(program: Command) {
             key,
             agent: (opts.agent as string | undefined) ?? parentOpts?.agent,
             maxLines,
-            timeout: timeoutMs !== undefined ? String(timeoutMs) : undefined,
-            url: opts.url as string | undefined,
-            token: opts.token as string | undefined,
-            password: opts.password as string | undefined,
+            timeoutMs,
             json: Boolean(opts.json || parentOpts?.json),
           },
           defaultRuntime,

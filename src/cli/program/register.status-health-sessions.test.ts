@@ -7,9 +7,9 @@ const mocks = vi.hoisted(() => ({
   statusCommand: vi.fn(),
   healthCommand: vi.fn(),
   sessionsCommand: vi.fn(),
+  sessionsCompactCommand: vi.fn(),
   sessionsCleanupCommand: vi.fn(),
   sessionsTailCommand: vi.fn(),
-  sessionsCompactCommand: vi.fn(),
   exportTrajectoryCommand: vi.fn(),
   commitmentsListCommand: vi.fn(),
   commitmentsDismissCommand: vi.fn(),
@@ -33,9 +33,9 @@ const mocks = vi.hoisted(() => ({
 const statusCommand = mocks.statusCommand;
 const healthCommand = mocks.healthCommand;
 const sessionsCommand = mocks.sessionsCommand;
+const sessionsCompactCommand = mocks.sessionsCompactCommand;
 const sessionsCleanupCommand = mocks.sessionsCleanupCommand;
 const sessionsTailCommand = mocks.sessionsTailCommand;
-const sessionsCompactCommand = mocks.sessionsCompactCommand;
 const exportTrajectoryCommand = mocks.exportTrajectoryCommand;
 const commitmentsListCommand = mocks.commitmentsListCommand;
 const commitmentsDismissCommand = mocks.commitmentsDismissCommand;
@@ -89,16 +89,16 @@ vi.mock("../../commands/sessions.js", () => ({
   sessionsCommand: mocks.sessionsCommand,
 }));
 
+vi.mock("../../commands/sessions-compact.js", () => ({
+  sessionsCompactCommand: mocks.sessionsCompactCommand,
+}));
+
 vi.mock("../../commands/sessions-cleanup.js", () => ({
   sessionsCleanupCommand: mocks.sessionsCleanupCommand,
 }));
 
 vi.mock("../../commands/sessions-tail.js", () => ({
   sessionsTailCommand: mocks.sessionsTailCommand,
-}));
-
-vi.mock("../../commands/sessions-compact.js", () => ({
-  sessionsCompactCommand: mocks.sessionsCompactCommand,
 }));
 
 vi.mock("../../commands/export-trajectory.js", () => ({
@@ -146,9 +146,9 @@ describe("registerStatusHealthSessionsCommands", () => {
     statusCommand.mockResolvedValue(undefined);
     healthCommand.mockResolvedValue(undefined);
     sessionsCommand.mockResolvedValue(undefined);
+    sessionsCompactCommand.mockResolvedValue(undefined);
     sessionsCleanupCommand.mockResolvedValue(undefined);
     sessionsTailCommand.mockResolvedValue(undefined);
-    sessionsCompactCommand.mockResolvedValue(undefined);
     exportTrajectoryCommand.mockResolvedValue(undefined);
     commitmentsListCommand.mockResolvedValue(undefined);
     commitmentsDismissCommand.mockResolvedValue(undefined);
@@ -374,6 +374,39 @@ describe("registerStatusHealthSessionsCommands", () => {
       active: "120",
       limit: "25",
     });
+  });
+
+  it("runs sessions compact with forwarded recovery options", async () => {
+    await runCli([
+      "sessions",
+      "--agent",
+      "work",
+      "--json",
+      "compact",
+      "agent:work:main",
+      "--max-lines",
+      "2000",
+      "--timeout",
+      "45000",
+    ]);
+
+    expectCommandOptions(sessionsCompactCommand, {
+      key: "agent:work:main",
+      agent: "work",
+      maxLines: 2000,
+      json: true,
+      timeoutMs: 45000,
+    });
+  });
+
+  it("rejects invalid sessions compact max-lines without calling compact command", async () => {
+    await runCli(["sessions", "compact", "agent:main:main", "--max-lines", "0"]);
+
+    expect(runtime.error).toHaveBeenCalledWith(
+      "--max-lines must be a positive integer, for example --max-lines 2000.",
+    );
+    expect(runtime.exit).toHaveBeenCalledWith(1);
+    expect(sessionsCompactCommand).not.toHaveBeenCalled();
   });
 
   it("runs sessions cleanup subcommand with forwarded options", async () => {

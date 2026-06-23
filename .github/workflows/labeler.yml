@@ -36,13 +36,13 @@ jobs:
         id: app-token
         continue-on-error: true
         with:
-          app-id: "2729701"
+          client-id: ${{ vars.GH_APP_CLIENT_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
       - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         id: app-token-fallback
         if: steps.app-token.outcome == 'failure'
         with:
-          app-id: "2971289"
+          client-id: ${{ vars.GH_APP_CLIENT_ID_FALLBACK }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY_FALLBACK }}
       - uses: actions/labeler@f27b608878404679385c85cfa523b85ccb86e213 # v6
         with:
@@ -470,13 +470,13 @@ jobs:
         id: app-token
         continue-on-error: true
         with:
-          app-id: "2729701"
+          client-id: ${{ vars.GH_APP_CLIENT_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
       - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         id: app-token-fallback
         if: steps.app-token.outcome == 'failure'
         with:
-          app-id: "2971289"
+          client-id: ${{ vars.GH_APP_CLIENT_ID_FALLBACK }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY_FALLBACK }}
       - name: Backfill PR labels
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
@@ -769,13 +769,13 @@ jobs:
         id: app-token
         continue-on-error: true
         with:
-          app-id: "2729701"
+          client-id: ${{ vars.GH_APP_CLIENT_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
       - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         id: app-token-fallback
         if: steps.app-token.outcome == 'failure'
         with:
-          app-id: "2971289"
+          client-id: ${{ vars.GH_APP_CLIENT_ID_FALLBACK }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY_FALLBACK }}
       - name: Apply maintainer or trusted-contributor label
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9

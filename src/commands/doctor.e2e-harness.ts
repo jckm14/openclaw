@@ -138,19 +138,19 @@ const autoMigrateLegacyStateDir = vi.fn().mockResolvedValue({
   changes: [],
   warnings: [],
 }) as unknown as MockFn;
-const autoMigrateLegacyState = vi.fn().mockResolvedValue({
+export const autoMigrateLegacyState = vi.fn().mockResolvedValue({
   migrated: false,
   skipped: false,
   changes: [],
   warnings: [],
 }) as unknown as MockFn;
-const autoMigrateLegacyTaskStateSidecars = vi.fn().mockResolvedValue({
+export const autoMigrateLegacyTaskStateSidecars = vi.fn().mockResolvedValue({
   migrated: false,
   skipped: false,
   changes: [],
   warnings: [],
 }) as unknown as MockFn;
-const runChannelPluginStartupMaintenance = vi
+export const runChannelPluginStartupMaintenance = vi
   .fn()
   .mockResolvedValue(undefined) as unknown as MockFn;
 
