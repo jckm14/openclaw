@@ -58,7 +58,7 @@ jobs:
             --openclaw-npm-resume-run-id "$OPENCLAW_NPM_RESUME_RUN_ID"
       - name: Retain publication dispatch receipt
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: release-button-dispatch-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -94,7 +94,7 @@ jobs:
             --request "$RUNNER_TEMP/release-request.json" --output "$RUNNER_TEMP/release-button"
       - name: Retain readback evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: release-button-verification-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/release-button/clawhub-public-verification/evidence.json
@@ -240,7 +240,7 @@ jobs:
           echo "- Windows Hub: dispatch failed; inspect this job before manual recovery." >> "$GITHUB_STEP_SUMMARY"
       - name: Upload Windows dispatch evidence
         if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: windows-release-dispatch-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/windows-dispatch.json
